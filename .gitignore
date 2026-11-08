@@ -1,0 +1,44 @@
+# Local development and assistant configuration
+.dev-stuff/
+.agents/
+.codex/
+.aws/
+.idea/
+.vscode/
+
+# Python test artifacts and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases, key files, and launcher download artifacts
+*.kdbx
+*.kdbx.*
+*.kdb
+*.kdb.*
+*.key
+*.key.*
+*.keyx
+*.keyx.*
+.keesyncxc-download.*
+
+# Authentication and local secrets
+.env
+.env.*
+!.env.example
+rclone.conf
+rclone.conf.*
+client_secret*.json
+credentials.json
+token.json
+
+# Editor and desktop artifacts
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
