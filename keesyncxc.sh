@@ -446,6 +446,7 @@ startup_checks() {
   command -v keepassxc >/dev/null || fail 'Run this script with --install to install KeePassXC.'
   command -v flock >/dev/null || fail 'flock is required (util-linux). Run this script with --install.'
   command -v pgrep >/dev/null || fail 'pgrep is required (procps). Run this script with --install.'
+  command -v timeout >/dev/null || fail 'timeout is required (GNU coreutils). Run this script with --install.'
   validate_paths
   set_database_paths
   secure_launcher_lock
@@ -454,6 +455,18 @@ startup_checks() {
   if pgrep -u "$(id -u)" -x keepassxc >/dev/null 2>&1; then
     fail 'KeePassXC is already running. Fully exit KeePassXC (including tray) before starting through this shortcut.'
   fi
+}
+
+# Bound DNS resolution and the TCP connection together, before rclone can start
+# its longer authentication/network retries. Use Google's API host rather than
+# an unrelated website or ICMP, which may be blocked on an otherwise usable link.
+check_internet_connection() {
+  ui_wait 'Checking internet connection (3-second timeout)...'
+  if timeout --kill-after=1s 3s bash -c 'exec 3<>/dev/tcp/www.googleapis.com/443' >/dev/null 2>&1; then
+    return 0
+  fi
+  ui_warn 'No connection to Google Drive detected; skipping cloud requests.'
+  return 1
 }
 
 # Installation runs separately from synchronization: it never transfers a database
@@ -467,7 +480,7 @@ install_dependencies() {
     package=${pair#*:}
     if ! command -v "$command_name" >/dev/null; then packages+=("$package"); fi
   done
-  for command_name in cat chmod cp cut date dirname id install ln md5sum mkdir mktemp mv realpath rm rmdir sha256sum stat; do
+  for command_name in cat chmod cp cut date dirname id install ln md5sum mkdir mktemp mv realpath rm rmdir sha256sum stat timeout; do
     if ! command -v "$command_name" >/dev/null; then packages+=(coreutils); break; fi
   done
   [[ "${#packages[@]}" != 0 ]] || { ui_ok 'All required system tools are already installed.'; return 0; }
@@ -479,7 +492,7 @@ install_dependencies() {
   sudo apt-get update || fail 'Package index update failed; installation stopped.'
   sudo apt-get install -y -- "${packages[@]}" || fail 'Package installation failed; installation stopped.'
   ui_note '--- apt output ends ---'
-  for command_name in keepassxc rclone zenity flock pgrep cat chmod cp cut date dirname id install ln md5sum mkdir mktemp mv realpath rm rmdir sha256sum stat; do
+  for command_name in keepassxc rclone zenity flock pgrep cat chmod cp cut date dirname id install ln md5sum mkdir mktemp mv realpath rm rmdir sha256sum stat timeout; do
     command -v "$command_name" >/dev/null || fail "Required command is still missing after package installation: $command_name"
   done
   ui_ok 'Required system tools are installed.'
@@ -2191,6 +2204,7 @@ recover_transaction() {
   [[ -f "$TRANSACTION" ]] || return 0
   read_transaction || { ui_error 'Invalid upload recovery record; investigate it before continuing.'; return 1; }
   ui_heading 'Upload recovery'
+  check_internet_connection || return 1
   ui_wait 'Checking an interrupted Google Drive upload...'
   describe_remote_selection
   local current backup metadata id
@@ -2305,7 +2319,7 @@ upload_local() {
 # =============================================================================
 # Status: 0 synchronized, 1 failed, 2 conflict, 3 offline/deferred, 130 cancelled.
 sync_once() {
-  local baseline localhash cloudhash status
+  local baseline localhash cloudhash status recorded
   validate_restore_review || return 1
   localhash=$(hash_local) || { ui_error 'Cannot read local database.'; return 1; }
   # Validate existing state before allowing either online or offline use.
@@ -2316,10 +2330,21 @@ sync_once() {
     [[ "$localhash" != 'MISSING' ]] || fail 'Local database missing. Restore it from backup before continuing.'
   fi
   [[ ! -f "$CONFLICT" ]] || return 2
-  describe_remote_selection
   # Offline editing requires an existing local database with valid sync state.
   status=0
-  cloudhash=$(remote_hash) || status=$?
+  if check_internet_connection; then
+    ui_wait 'Checking Google Drive...'
+    describe_remote_selection
+    cloudhash=$(remote_hash) || status=$?
+  else
+    # A failed probe must not bypass validation of an existing local ID record.
+    if [[ -e "$IDENTITY" || -L "$IDENTITY" ]]; then
+      [[ -f "$IDENTITY" && ! -L "$IDENTITY" ]] && recorded=$(cat "$IDENTITY") &&
+        [[ "$recorded" =~ ^[a-zA-Z0-9_-]+$ ]] ||
+        fail 'Invalid Drive identity record; preserve it for investigation.'
+    fi
+    status=1
+  fi
   if [[ "$status" != 0 ]]; then
     [[ "$status" != 2 ]] || fail 'Drive identity requires attention; synchronization stopped with all local data preserved.'
     if [[ -f "$LOCAL" && -f "$STATE" ]]; then
@@ -2728,12 +2753,10 @@ phase=before
 while :; do
   if [[ "$phase" == after ]]; then
     ui_heading 'After editing'
-    ui_wait 'KeePassXC is closed; checking Google Drive for saved changes...'
+    ui_wait 'KeePassXC is closed; checking for saved changes...'
   else
     ui_heading 'Before editing'
-    ui_wait 'Checking Google Drive...'
   fi
-  ui_note 'Network checks may take a while if the connection is unavailable.'
   sync_status=0
   sync_once || sync_status=$?
   case "$sync_status" in

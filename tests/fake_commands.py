@@ -93,7 +93,7 @@ if name in ("sudo", "apt-get"):
     if "install" in apt_args:
         mapping = {"keepassxc": ["keepassxc"], "rclone": ["rclone"],
                    "zenity": ["zenity"], "util-linux": ["flock"],
-                   "procps": ["pgrep"], "coreutils": ["sha256sum", "md5sum"]}
+                   "procps": ["pgrep"], "coreutils": ["sha256sum", "md5sum", "timeout"]}
         binaries = Path(os.environ["TEST_BIN"])
         for package in apt_args:
             for command in mapping.get(package, []):
@@ -103,6 +103,14 @@ if name in ("sudo", "apt-get"):
     sys.exit(0)
 if name == "pgrep":
     sys.exit(0 if os.environ.get("TEST_APP_RUNNING") else 1)
+if name == "timeout":
+    log(command=name, arguments=args)
+    results = json.loads(os.environ.get("TEST_CONNECTIVITY", "[0]"))
+    result = results[min(count("connectivity_count") - 1, len(results) - 1)]
+    if result == "stall":
+        # Exercise the real deadline with a stalled command, without networking.
+        os.execv("/usr/bin/timeout", ["/usr/bin/timeout", *args[:2], "/bin/sleep", "30"])
+    sys.exit(int(result))
 if name == "keepassxc":
     index = count("launch_count") - 1
     database = Path(args[-1])

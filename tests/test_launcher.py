@@ -5,6 +5,7 @@ No real database, graphical application, or cloud remote is accessed.
 """
 
 from pathlib import Path
+import time
 import unittest
 
 from support import LauncherCase, LAUNCHER_REMOTE as REMOTE
@@ -692,6 +693,94 @@ class LauncherTests(LauncherCase):
         self.assertEqual(self.cloud.read_text(), "original")
         self.assertIn("Post-close sync deferred", result.stdout + result.stderr)
         self.assertNotIn("Finished.", result.stdout)
+
+    def test_failed_connectivity_check_opens_pinned_offline_copy_without_rclone(self):
+        self.seed()
+        identity = Path(str(self.state) + ".id")
+        original_id = self.cloud_id()
+        identity.write_text(original_id + "\n")
+        baseline = self.state.read_text()
+        result = self.run_launcher(edit="offline edit", TEST_CONNECTIVITY="[1]")
+        self.assert_failure(result)
+        self.assertEqual(len(self.events("keepassxc")), 1)
+        self.assertFalse(self.events("rclone"))
+        self.assertEqual(self.local.read_text(), "offline edit")
+        self.assertEqual(self.cloud.read_text(), "original")
+        self.assertEqual(self.state.read_text(), baseline)
+        self.assertEqual(identity.read_text(), original_id + "\n")
+        self.assertEqual(len(self.events("timeout")), 2)
+        self.assertIn("skipping cloud requests", result.stdout)
+        self.assertIn("Post-close sync deferred", result.stdout + result.stderr)
+
+    def test_failed_connectivity_check_cannot_authorize_first_offline_launch(self):
+        self.local.write_text("unverified local database")
+        result = self.run_launcher(TEST_CONNECTIVITY="[1]")
+        self.assert_blocked(result)
+        self.assertFalse(self.events("rclone"))
+        self.assertFalse(self.state.exists())
+        self.assertEqual(self.local.read_text(), "unverified local database")
+        self.assertIn("No previously synchronized offline copy", result.stdout + result.stderr)
+
+    def test_failed_connectivity_check_preserves_pending_upload_recovery(self):
+        self.seed_in_place_transaction()
+        journal = self.transaction.read_text()
+        baseline = self.state.read_text()
+        result = self.run_launcher(TEST_CONNECTIVITY="[1]")
+        self.assert_blocked(result)
+        self.assertFalse(self.events("rclone"))
+        self.assertEqual(self.transaction.read_text(), journal)
+        self.assertEqual(self.state.read_text(), baseline)
+        self.assertEqual(self.local.read_text(), "local edit")
+        self.assertEqual(self.cloud.read_text(), "original")
+
+    def test_failed_connectivity_check_cannot_bypass_invalid_identity_record(self):
+        self.seed()
+        identity = Path(str(self.state) + ".id")
+        for kind in ("invalid", "symlink"):
+            with self.subTest(kind=kind):
+                if kind == "invalid":
+                    identity.write_text("invalid identity!\n")
+                else:
+                    identity.unlink()
+                    identity.symlink_to(self.local)
+                result = self.run_launcher(TEST_CONNECTIVITY="[1]")
+                self.assert_blocked(result)
+                self.assertFalse(self.events("rclone"))
+                self.assertIn("Invalid Drive identity record", result.stdout + result.stderr)
+
+    def test_connection_restored_during_offline_editing_syncs_on_exit(self):
+        self.seed()
+        result = self.run_launcher(edit="offline edit", TEST_CONNECTIVITY="[1, 0]")
+        self.assert_success(result)
+        self.assertEqual(self.cloud.read_text(), "offline edit")
+        self.assertEqual(self.state.read_text(), self.digest("offline edit") + "\n")
+        self.assertEqual([file.read_text() for file in self.cloud_backups()], ["original"])
+        commands = [event["command"] for event in self.events()]
+        self.assertLess(commands.index("keepassxc"), commands.index("rclone"))
+        self.assertEqual(len(self.events("timeout")), 2)
+
+    def test_connection_lost_during_editing_skips_post_close_cloud_requests(self):
+        self.seed()
+        baseline = self.state.read_text()
+        result = self.run_launcher(edit="local edit", TEST_CONNECTIVITY="[0, 1]")
+        self.assert_failure(result)
+        self.assertEqual(self.local.read_text(), "local edit")
+        self.assertEqual(self.cloud.read_text(), "original")
+        self.assertEqual(self.state.read_text(), baseline)
+        commands = [event["command"] for event in self.events()]
+        self.assertNotIn("rclone", commands[commands.index("keepassxc") + 1:])
+        self.assertIn("Post-close sync deferred", result.stdout + result.stderr)
+
+    def test_stalled_connectivity_check_times_out_before_offline_launch(self):
+        self.seed()
+        started = time.monotonic()
+        result = self.run_launcher(TEST_CONNECTIVITY='["stall", 1]')
+        elapsed = time.monotonic() - started
+        self.assert_failure(result)
+        self.assertEqual(len(self.events("keepassxc")), 1)
+        self.assertFalse(self.events("rclone"))
+        self.assertGreaterEqual(elapsed, 3)
+        self.assertLess(elapsed, 6, "Offline launch waited beyond the connectivity deadline")
 
     def test_connection_loss_before_upload_allows_offline_session_and_retry(self):
         self.seed(local="local edit")

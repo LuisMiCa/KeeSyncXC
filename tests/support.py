@@ -151,7 +151,7 @@ class LauncherCase(ScriptCase):
         self.conflict = Path(str(self.state) + ".conflict")
         for directory in (self.local.parent, self.cloud.parent, self.data):
             directory.mkdir(parents=True)
-        self.install_mocks("rclone", "keepassxc", "pgrep", "zenity", "cp", "mv", "mktemp", "md5sum")
+        self.install_mocks("rclone", "keepassxc", "pgrep", "zenity", "cp", "mv", "mktemp", "md5sum", "timeout")
         self.env = self.isolated_environment(self.root, "config", LAUNCHER_REMOTE)
         self.config = self.root / "config/keesyncxc/config"
         self.config.parent.mkdir(parents=True)
@@ -240,7 +240,7 @@ class InstallerCase(ScriptCase):
         self.installed = self.home / ".local/bin/keesyncxc"
         self.state_dir = self.root / "state/keesyncxc"
         self.state = self.state_dir / (hashlib.sha256(INSTALLER_REMOTE.encode()).hexdigest() + ".md5")
-        self.install_mocks("rclone", "keepassxc", "pgrep", "zenity", "sudo", "apt-get", "id")
+        self.install_mocks("rclone", "keepassxc", "pgrep", "zenity", "sudo", "apt-get", "id", "timeout")
         self.env = self.isolated_environment(self.home, "configuration", INSTALLER_REMOTE)
 
     def run_script(self, *arguments, answers="\n\n\nn\n", script=None, **settings):
