@@ -45,14 +45,17 @@ Other Linux distributions require manual dependency installation. Cloud backup i
 
 ## Installation
 
-Download and extract this repository, or clone it, then run the source-script commands below from the repository root.
+Only `keesyncxc.sh` is needed to install and run KeeSyncXC.
 
-- [ ] **Prepare your Google credentials and database.** Follow rclone's [Google Drive client ID guide](https://rclone.org/drive/#making-your-own-client-id) to create your own OAuth client ID and secret. Keep them ready for rclone configuration. Create a KeePassXC database and upload it to Google Drive first if you do not already have one; the installer requires an existing cloud `.kdbx` file.
-- [ ] **Run the script in a terminal**, from this project directory:
+- [ ] **Prepare your Google credentials and database.** Complete [Get Google credentials for rclone](#get-google-credentials-for-rclone) below to create your own OAuth client ID and secret. Keep them ready for rclone configuration. Create a KeePassXC database and upload it to Google Drive first if you do not already have one; the installer requires an existing cloud `.kdbx` file.
+- [ ] **Download the script.** Open [keesyncxc.sh](keesyncxc.sh) on GitHub and select **Download raw file**. Save it as `keesyncxc.sh`.
+- [ ] **Run the script in a terminal**, from the directory where you saved it:
 
   ```bash
   bash keesyncxc.sh
   ```
+
+  Running it through `bash` does not require `chmod +x`. To run it directly with `./keesyncxc.sh` or through the file manager, first run `chmod +x keesyncxc.sh`. The installer makes the installed launcher executable automatically.
 
   Run as your regular desktop user. The installer uses `sudo apt-get` when it needs missing packages; do not run the whole script with `sudo`. Automatic package installation supports Linux Mint, Ubuntu, and Debian. It checks KeePassXC, rclone, Zenity, util-linux, procps, and GNU coreutils.
 - [ ] **Follow the prompts.** Choose the cloud database first, the cloud backup folder name second, and the local database path third. The default cloud database is `gdrive:KeePass/kpDB.kdbx`. For a database in the Drive root, enter `kpDB.kdbx`; the installer uses the remote name shown in the prompt, such as `gdrive`, and saves `gdrive:kpDB.kdbx`. You can also enter a full path to choose the remote explicitly. Do not put a slash immediately after the colon. For backups, accept `KeePass-Backups` or enter a folder name such as `kpDB Backups`; setup shows the resulting cloud path. The installer reuses an existing rclone connection or opens [rclone's connection setup](#connect-google-drive-in-rclone) below. Google account authorization requires your interaction. If you also use KeeAnywhere, read the [compatibility notes](#keeanywhere-compatibility) before sharing the database.
@@ -72,6 +75,29 @@ bash keesyncxc
 ```
 
 The installer checks the cloud file with read-only commands, saves your paths, and installs the launcher and menu shortcut. It does not create or upload a database or change existing database contents or synchronization records. On the first database launch, the existing cloud database is the source: the launcher downloads and verifies it before opening KeePassXC. An existing local database without synchronization state is accepted only when its MD5 matches the cloud copy, which also allows retrying a first download whose state write failed. If installation finds a differing local database, preserve it elsewhere or choose another local path before retrying.
+
+### Get Google credentials for rclone
+
+Use this checklist to prepare the OAuth credentials before connecting Google Drive. It follows [rclone's Google Drive client ID guide](https://rclone.org/drive/#making-your-own-client-id).
+
+- [ ] Sign in to the [Google API Console](https://console.developers.google.com/) with your Google account.
+- [ ] Select an existing project or create a new one.
+- [ ] Open **APIs & Services → Enable APIs and Services**, search for **Drive**, and enable the **Google Drive API**.
+- [ ] Open **Credentials** in the left sidebar. Use the sidebar entry rather than the **Create credentials** wizard.
+- [ ] Configure the **OAuth consent screen** if you have not already done so. Click **Configure consent screen**, then **Get started**. Enter an app name such as `rclone` and your support email. Click **Next**, choose **External** under **Audience**, then enter your contact email. Review and accept the terms, and click **Create**. Your app or project name should now appear in the top-left box. If the consent screen is already configured, continue with **Data Access**.
+- [ ] Open **Data Access → Add or remove scopes** and select:
+
+  - `https://www.googleapis.com/auth/docs`
+  - `https://www.googleapis.com/auth/drive`
+  - `https://www.googleapis.com/auth/drive.metadata.readonly`
+
+  Click **Update**, then **Save** on the Data Access page.
+
+- [ ] Open **Audience**, scroll to **Test users**, click **+ Add users**, add the Google account you will use with rclone, and click **Save**.
+- [ ] Open **Overview → Create OAuth client** (or **Clients → Create client**). Choose **Desktop app**, keep the default name or enter your own, and click **Create**.
+- [ ] Save the **client ID** and **client secret** for the rclone prompts. You can also download the credentials JSON file and keep it securely. Continue with [Connect Google Drive in rclone](#connect-google-drive-in-rclone).
+
+For an **External** app left in **Testing**, Google expires the refresh token after seven days, requiring another sign-in. For ongoing use, follow the **Audience → Publish app** steps in [rclone's guide](https://rclone.org/drive/#making-your-own-client-id). See Google's [refresh token expiration documentation](https://developers.google.com/identity/protocols/oauth2#expiration) for details.
 
 ### Connect Google Drive in rclone
 
@@ -110,7 +136,7 @@ NO_COLOR=1 bash keesyncxc.sh --status
 
 ## Commands
 
-Use these options with the source script from the repository root or with the installed launcher:
+Use these options with `keesyncxc.sh` from the directory where you saved it, or with the installed launcher:
 
 ```bash
 bash keesyncxc.sh --help
@@ -200,7 +226,7 @@ Fully exit KeePassXC when finished. Closing its window to the system tray can ke
 
 ### Update or reconfigure the launcher
 
-Run `bash keesyncxc.sh --repair` from the updated source directory to refresh the installed launcher and shortcut while retaining settings. This copies the running script; it does not download a release. With no saved configuration, repair starts full setup. Use `--backup-folder` to change the cloud backup folder name and `--move-local` to move the working database safely. Changing the backup folder directs future backups there; existing backups stay where they are. See available options with `bash keesyncxc.sh --help`.
+Download the updated `keesyncxc.sh`, then run `bash keesyncxc.sh --repair` from the directory containing it to refresh the installed launcher and shortcut while retaining settings. This copies the running script; it does not download a release. With no saved configuration, repair starts full setup. Use `--backup-folder` to change the cloud backup folder name and `--move-local` to move the working database safely. Changing the backup folder directs future backups there; existing backups stay where they are. See available options with `bash keesyncxc.sh --help`.
 
 To select a different cloud database, use **Settings and database selection → Switch cloud database** in `--menu`, or run `--switch-database` (also `--reset`); this preserves the current local copy and its records before starting fresh setup. The `--install` option runs the full setup/reconfiguration wizard. It shows the built-in cloud default separately from the saved setting, keeps saved settings when you press Enter, and expands filenames without a remote prefix using the shown remote. Resolve a pending conflict or interrupted upload with its existing settings before changing paths or the cloud backup folder.
 
