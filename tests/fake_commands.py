@@ -315,6 +315,15 @@ if name == "rclone":
     sys.exit(0)
 if name == "cp" and fault == "local_backup":
     reject("local backup")
+if name == "cp" and fault in ("corrupt_local_backup", "change_local_during_backup"):
+    source, destination = mapped(args[-2]), mapped(args[-1])
+    shutil.copyfile(source, destination)
+    if destination.parent.name == "backups" and destination.name.startswith("local-"):
+        if fault == "corrupt_local_backup":
+            destination.write_text("corrupted local backup")
+        else:
+            source.write_text("local edit during backup")
+    sys.exit(0)
 if name == "mv":
     if fault == "replace_local" and args[-1].endswith("Passwords.kdbx"):
         reject("local replacement")

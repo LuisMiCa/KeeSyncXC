@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Luis
+# Copyright (c) 2026 Luis Carvalho
 # KeeSyncXC: on-demand KeePassXC synchronization with Google Drive for Linux.
 # Requires: configured rclone, KeePassXC 2.7.6+, flock, procps, GNU coreutils.
 # Optional: zenity for conflict choices from a graphical shortcut.
@@ -1705,8 +1705,7 @@ show_menu_help() {
       ui_info '2) Check/install required system tools: install missing dependencies; sudo may ask for your Linux password.'
       ui_info '3) Uninstall launcher and/or remove local data: choose launcher only, local data only, or complete uninstall.'
       ui_note 'Each choice previews the selected files and asks for one confirmation.'
-      ui_info '4) Delete local database, backups, and setup: preview and confirm removal of the working database and recognized local data.'
-      ui_note 'This also deletes saved settings and recovery records. The launcher and shortcut remain for fresh setup.'
+      ui_note 'For local data only, choose option 3 above, then option 2. This deletes the working database, recognized backups, settings, and recovery records; the launcher and shortcut remain for fresh setup.'
       ui_info 'Complete uninstall: choose option 3 above, then option 3 in the uninstall menu.'
       ui_note 'Or run bash ~/.local/bin/keesyncxc --uninstall from a terminal and choose 3.'
       ui_note 'Review the deletion preview, then answer Yes once to confirm.'
@@ -1802,8 +1801,8 @@ management_submenu() {
       ;;
     maintenance)
       title='Installation and advanced maintenance'
-      entries=('1) Install/repair launcher and shortcut from this script' '2) Check/install required system tools' '3) Uninstall launcher and/or remove local data' '4) Delete local database, backups, and setup (keep launcher)')
-      actions=(--repair --dependencies --uninstall --clear-local)
+      entries=('1) Install/repair launcher and shortcut from this script' '2) Check/install required system tools' '3) Uninstall launcher and/or remove local data')
+      actions=(--repair --dependencies --uninstall)
       ;;
   esac
   while [[ "$MENU_EXIT" == 0 ]]; do
@@ -2093,11 +2092,22 @@ conflict_detected() {
 # Use a unique local backup name so repeated saves cannot overwrite a backup.
 backup_local() {
   [[ -f "$LOCAL" ]] || return 0
-  local file
+  local file sourcehash copiedhash
+  sourcehash=$(hash_file "$LOCAL") || return 1
   file=$(mktemp "$BACKUPS/local-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXXXX.kdbx") || return 1
   if ! cp -- "$LOCAL" "$file"; then
     rm -f -- "$file"
     ui_error 'Failed to back up local database.'
+    return 1
+  fi
+  if ! copiedhash=$(hash_file "$file") || [[ "$copiedhash" != "$sourcehash" ]]; then
+    rm -f -- "$file"
+    ui_error 'Local safety backup failed verification; the working database was kept.'
+    return 1
+  fi
+  if [[ "$(hash_local)" != "$sourcehash" ]]; then
+    ui_error 'Local database changed while creating its safety backup; replacement stopped.'
+    ui_detail 'Retained safety backup' "$file" >&2
     return 1
   fi
   ui_ok 'Local safety copy saved.'

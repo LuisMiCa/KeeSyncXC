@@ -1,16 +1,32 @@
 # KeeSyncXC
 
-KeeSyncXC keeps a KeePassXC password database synchronized with Google Drive on Linux. Open your database through the launcher: it checks for cloud changes before starting KeePassXC, then uploads your saved changes after you fully quit the editor.
+KeeSyncXC is a Bash launcher for Linux that keeps a KeePassXC password database synchronized with Google Drive. Open your database through KeeSyncXC: it synchronizes before starting KeePassXC and again after you save and fully quit the editor.
 
 The launcher uses rclone to transfer the encrypted `.kdbx` file, keeps local and cloud backups, and verifies checksums and the original Google Drive file ID after uploads. When both copies change, it asks you to choose how to resolve the conflict. After an initial synchronization, you can also edit offline and synchronize when the connection returns.
 
 Interactive setup and an application-menu shortcut handle everyday launches. Built-in menus let you synchronize without opening the editor, inspect and restore backups, move the local database, and manage the installation. Each saved configuration connects one local database to one cloud file.
 
-[Installation](#installation) · [Everyday use](#everyday-use) · [Commands](#commands) · [Configuration](#configuration-and-manual-use) · [Menus and maintenance](#interactive-menu-and-maintenance)
+## Contents
 
-[Synchronization](#normal-synchronization) · [Conflicts](#resolving-a-conflict) · [Upload recovery](#how-publication-protects-the-files) · [Backups](#state-and-backups) · [File identity](#renamed-files-and-duplicate-names) · [KeeAnywhere](#keeanywhere-compatibility)
+- [Disclaimer](#disclaimer)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Everyday use](#everyday-use)
+- [Commands](#commands)
+- [Configuration and manual use](#configuration-and-manual-use)
+- [Interactive menu and maintenance](#interactive-menu-and-maintenance)
+- [Normal synchronization](#normal-synchronization)
+- [Resolving a conflict](#resolving-a-conflict)
+- [How publication protects the files](#how-publication-protects-the-files)
+- [State and backups](#state-and-backups)
+- [Renamed files and duplicate names](#renamed-files-and-duplicate-names)
+- [KeeAnywhere compatibility](#keeanywhere-compatibility)
+- [Security](#security)
+- [Development](#development)
+- [License](#license)
+- [Version](#version)
 
-[Security](#security) · [Testing](tests/TESTING.md) · [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE)
+See also the [testing guide](tests/TESTING.md), [contribution guide](CONTRIBUTING.md), and [changelog](CHANGELOG.md).
 
 ## Disclaimer
 
@@ -223,11 +239,12 @@ Main menu
 ├── 5) Installation and advanced maintenance
 │   ├── 1) Install/repair launcher and shortcut
 │   ├── 2) Check/install required system tools
-│   ├── 3) Uninstall launcher and/or remove local data
-│   └── 4) Delete local database, backups, and setup
+│   └── 3) Uninstall launcher and/or remove local data
 ├── H) Help
 └── 0) Quit
 ```
+
+Under **5 → 3**, choose **1** to uninstall the launcher and settings while keeping local data, **2** to delete local data and setup while keeping the launcher, or **3** for a complete uninstall. Each choice previews the affected files before confirmation.
 
 Every submenu also offers **H: Help** and **0: Back**. Main-menu Help briefly explains options **1–5** with matching numbers, explains **H** and **0**, and points to each submenu's own help. Status, backups, settings, and maintenance Help each explain that submenu's actions and return to the same submenu. Conflict Help retains its dedicated resolution guide, while `--help` lists command-line usage.
 
@@ -394,7 +411,7 @@ keesyncxc/
 
 Keep synchronization records while investigating an error: they preserve the information needed to avoid an unintended overwrite. The state and backup directories must belong to your user and must not grant group or other write access. The launcher restricts accepted state and backup directories to mode `700` and refuses symlinked or unsafe parent paths. It leaves unrelated parent permissions alone. The lock must be a regular, single-link file owned by your user with mode `600` or stricter, and is opened without truncating its contents.
 
-Downloads use a private temporary staging directory beside the local working database. Rclone metadata preservation is disabled for downloads, and the verified database must have mode `600` before replacing the working file. Temporary staging is removed on success or failure. Backup inventories display control characters in filenames as escaped text.
+Downloads use a private temporary staging directory beside the local working database. Rclone metadata preservation is disabled for downloads, and the verified database must have mode `600` before replacing the working file. An existing working database is copied to a local safety backup; both files must still match its pre-copy checksum before replacement proceeds. Temporary staging is removed on success or failure. Backup inventories display control characters in filenames as escaped text.
 
 Cloud backups go into the folder chosen during setup, beside the configured database. With the default remote and backup folder name, the folder can contain:
 
@@ -498,7 +515,7 @@ The source script stays at the repository root so it can run directly. Usage and
 
 ## License
 
-Copyright (c) 2026 Luis. This project's source code and documentation are available under the [MIT License](LICENSE). KeePassXC, rclone, and other dependencies retain their own licenses.
+Copyright (c) 2026 Luis Carvalho. This project's source code and documentation are available under the [MIT License](LICENSE). KeePassXC, rclone, and other dependencies retain their own licenses.
 
 ## Version
 

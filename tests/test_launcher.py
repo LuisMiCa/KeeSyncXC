@@ -98,7 +98,7 @@ class LauncherTests(LauncherCase):
 
     def test_download_failures_preserve_local_and_baseline(self):
         for fault in ("download_temp", "download", "corrupt_download", "download_hash",
-                      "local_backup", "replace_local", "local_hash"):
+                      "local_backup", "corrupt_local_backup", "replace_local", "local_hash"):
             with self.subTest(fault=fault):
                 self.seed(cloud="new cloud database")
                 baseline = self.state.read_text()
@@ -108,6 +108,17 @@ class LauncherTests(LauncherCase):
                 self.assertEqual(self.cloud.read_text(), "new cloud database")
                 self.assertEqual(self.state.read_text(), baseline)
                 self.assertFalse(list(self.local.parent.glob(".keesyncxc-download.*")))
+
+    def test_local_change_during_safety_backup_stops_download_replacement(self):
+        self.seed(cloud="new cloud database")
+        baseline = self.state.read_text()
+        result = self.run_launcher("change_local_during_backup")
+        self.assert_blocked(result)
+        self.assertEqual(self.local.read_text(), "local edit during backup")
+        self.assertEqual(self.local_backups(), ["original"])
+        self.assertEqual(self.cloud.read_text(), "new cloud database")
+        self.assertEqual(self.state.read_text(), baseline)
+        self.assertFalse(list(self.local.parent.glob(".keesyncxc-download.*")))
 
     def test_state_failures_preserve_baseline_and_stop_launch(self):
         for fault in ("state_temp", "replace_state"):
