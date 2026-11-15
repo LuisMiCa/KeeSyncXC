@@ -30,8 +30,10 @@ See also the [testing guide](tests/TESTING.md), [contribution guide](CONTRIBUTIN
 
 ## Requirements
 
+KeeSyncXC requires KeePassXC installed as a native system package, with the `keepassxc` command available in `PATH`. **The Flatpak version of KeePassXC is not supported.**
+
 - A Linux desktop with Bash and GNU coreutils. Automatic dependency installation supports Linux Mint, Ubuntu, and Debian through `apt-get` and `sudo`.
-- KeePassXC 2.7.6 or newer, rclone with its Google Drive backend, `flock` (util-linux), and `pgrep` (procps). Setup also installs Zenity for graphical messages and conflict choices.
+- KeePassXC (native system package), rclone with its Google Drive backend, `flock` (util-linux), and `pgrep` (procps). Setup also installs Zenity for graphical messages and conflict choices.
 - A terminal for setup and desktop launches. Double-click launches require `x-terminal-emulator` to show progress.
 - A Google account, your own [Google OAuth client ID and secret for rclone](https://rclone.org/drive/#making-your-own-client-id), and an existing `.kdbx` database in Google Drive.
 

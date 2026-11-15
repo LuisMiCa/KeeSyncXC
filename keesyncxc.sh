@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Luis Carvalho
 # KeeSyncXC: on-demand KeePassXC synchronization with Google Drive for Linux.
-# Requires: configured rclone, KeePassXC 2.7.6+, flock, procps, GNU coreutils.
+# Requires: configured rclone, native KeePassXC, flock, procps, GNU coreutils.
 # Optional: zenity for conflict choices from a graphical shortcut.
 # The cloud copy is the initial authoritative copy. No scheduled sync.
 
