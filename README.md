@@ -1,14 +1,13 @@
 # KeeSyncXC
 
-KeeSyncXC is a Bash launcher for Linux that keeps a KeePassXC password database synchronized with Google Drive. Open your database through KeeSyncXC: it synchronizes before starting KeePassXC and again after you save and fully quit the editor.
+KeeSyncXC is a Bash script for Linux that synchronizes a KeePassXC database with Google Drive and launches KeePassXC. It uses rclone to transfer the encrypted `.kdbx` file, synchronizing before KeePassXC starts and again when it fully exits.
 
-The launcher uses rclone to transfer the encrypted `.kdbx` file, keeps local and cloud backups, and verifies checksums and the original Google Drive file ID after uploads. When both copies change, it asks you to choose how to resolve the conflict. After an initial synchronization, you can also edit offline and synchronize when the connection returns.
+The script keeps local and cloud backups and verifies the uploaded database’s checksum and original Google Drive file ID. If both the local and cloud copies have changed, it asks you to choose how to resolve the conflict. After an initial synchronization, you can also edit offline and synchronize when the connection returns.
 
-Interactive setup and an application-menu shortcut handle everyday launches. Built-in menus let you synchronize without opening the editor, inspect and restore backups, move the local database, and manage the installation. Each saved configuration connects one local database to one cloud file.
+On its first run, KeeSyncXC guides you through setup and creates an application menu shortcut. Command-line options let you inspect and restore backups, move the local database, manage the installation, and more. You can also use the --menu option to access these actions through an interactive menu.
 
 ## Contents
 
-- [Disclaimer](#disclaimer)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Everyday use](#everyday-use)
@@ -23,16 +22,11 @@ Interactive setup and an application-menu shortcut handle everyday launches. Bui
 - [KeeAnywhere compatibility](#keeanywhere-compatibility)
 - [Security](#security)
 - [Development](#development)
+- [Disclaimer](#disclaimer)
 - [License](#license)
 - [Version](#version)
 
 See also the [testing guide](tests/TESTING.md), [contribution guide](CONTRIBUTING.md), and [changelog](CHANGELOG.md).
-
-## Disclaimer
-
-KeeSyncXC is a **vibe coded project**, developed with AI assistance. It is provided **as is**, without warranty, under the [MIT License](LICENSE). Bugs or synchronization failures may cause data loss or overwrite changes.
-
-Review the code, test with a disposable database, and keep independent backups before using it with real passwords. Automated tests and recovery features cannot guarantee data safety or security.
 
 ## Requirements
 
@@ -538,6 +532,12 @@ The tests use temporary homes and fake rclone/KeePassXC commands, without access
 | [.github/](.github/) | CI workflow and issue/pull request templates. |
 
 The source script stays at the repository root so it can run directly. Usage and security guidance live in this README, and testing documentation lives with the regression suite in `tests/`. Local development material in `.dev-stuff/`, assistant/editor settings, Python caches, databases, and credentials are ignored and are not part of the published project.
+
+## Disclaimer
+
+KeeSyncXC is a **vibe coded project**, developed with AI assistance. It is provided **as is**, without warranty, under the [MIT License](LICENSE). Bugs or synchronization failures may cause data loss or overwrite changes.
+
+Review the code, test with a disposable database, and keep independent backups before using it with real passwords. Automated tests and recovery features cannot guarantee data safety or security.
 
 ## License
 
